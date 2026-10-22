@@ -7,13 +7,13 @@ canvas{image-rendering:pixelated;width:min(100vw,calc(100vh*256/240));aspect-rat
 </style></head><body><canvas id="c" width="256" height="240"></canvas>
 <script>
 // Star Blaster: 256x240 NES-res shooter. Arrows/A-D move, Space/Z shoot, Enter start. Touch: drag + tap.
-// Assets (see assets/ASSET_CREDITS.md): sprites CC0 by sitebender; audio from the Game building factory.
+// Assets (see assets/ASSET_CREDITS.md): sprites CC0 by sitebender; music by Not Jam (CC0), SFX from the Game building factory.
 const cv=document.getElementById('c'),g=cv.getContext('2d');g.imageSmoothingEnabled=false;
 const load=n=>{const i=new Image();i.src='assets/sprites/'+n+'.png';return i};
 const IMG={player:load('player'),beast:load('enemy_beast'),loomer:load('enemy_loomer'),shot:load('shot_player'),eshot:load('shot_enemy'),spark:load('spark')};
 const snd=n=>new Audio('assets/audio/'+n+'.wav');
 const sfx={shoot:snd('SFX_Jump'),hit:snd('SFX_Coin'),hurt:snd('SFX_Hurt'),over:snd('SFX_Stomp'),clear:snd('SFX_Level_Clear')};
-const music=snd('MUSIC_Greenlands_Theme_loop');music.loop=true;music.volume=.4;
+const music=new Audio('assets/audio/MUSIC_Battle_Commences_loop.mp3');music.loop=true;music.volume=.4;
 const play=n=>{try{const a=sfx[n].cloneNode();a.volume=.5;a.play()}catch(e){}};
 // all positions are sprite centres; every sprite is a 16x16 frame
 const spr=(im,fx,fy,x,y,rot=0)=>{g.save();g.translate(x|0,y|0);if(rot)g.rotate(rot);g.drawImage(im,fx*16,fy*16,16,16,-8,-8,16,16);g.restore()};
