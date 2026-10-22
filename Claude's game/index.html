@@ -3,18 +3,20 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
 html,body{margin:0;background:#000;height:100%;display:flex;align-items:center;justify-content:center}
-canvas{image-rendering:pixelated;width:min(100vw,calc(100vh*16/15));aspect-ratio:256/240;background:#000}
+canvas{image-rendering:pixelated;width:min(100vw,calc(100vh*256/240));aspect-ratio:256/240;background:#000}
 </style></head><body><canvas id="c" width="256" height="240"></canvas>
 <script>
 // Star Blaster: 256x240 NES-res shooter. Arrows/A-D move, Space/Z shoot, Enter start. Touch: drag + tap.
+// Assets (see assets/ASSET_CREDITS.md): sprites CC0 by sitebender; audio from the Game building factory.
 const cv=document.getElementById('c'),g=cv.getContext('2d');g.imageSmoothingEnabled=false;
-const A='assets/',img=new Image();img.src=A+'sprites.png';
-const snd=n=>{const a=new Audio(A+n);return a};
-const sfx={shoot:snd('sfx_shoot.wav'),hit:snd('sfx_hit.wav'),boom:snd('sfx_explode.wav'),over:snd('sfx_gameover.wav')};
-const music=snd('music.wav');music.loop=true;music.volume=.4;
+const load=n=>{const i=new Image();i.src='assets/sprites/'+n+'.png';return i};
+const IMG={player:load('player'),beast:load('enemy_beast'),loomer:load('enemy_loomer'),shot:load('shot_player'),eshot:load('shot_enemy'),spark:load('spark')};
+const snd=n=>new Audio('assets/audio/'+n+'.wav');
+const sfx={shoot:snd('SFX_Jump'),hit:snd('SFX_Coin'),hurt:snd('SFX_Hurt'),over:snd('SFX_Stomp'),clear:snd('SFX_Level_Clear')};
+const music=snd('MUSIC_Greenlands_Theme_loop');music.loop=true;music.volume=.4;
 const play=n=>{try{const a=sfx[n].cloneNode();a.volume=.5;a.play()}catch(e){}};
-const S={ship:0,e1:1,e2:2,bul:3,ebul:4,b1:5,b2:6,star:7};
-const spr=(i,x,y)=>g.drawImage(img,i*8,0,8,8,x|0,y|0,8,8);
+// all positions are sprite centres; every sprite is a 16x16 frame
+const spr=(im,fx,fy,x,y,rot=0)=>{g.save();g.translate(x|0,y|0);if(rot)g.rotate(rot);g.drawImage(im,fx*16,fy*16,16,16,-8,-8,16,16);g.restore()};
 const txt=(s,x,y,c='#fcfcfc')=>{g.fillStyle=c;g.font='8px monospace';g.fillText(s,x,y)};
 const keys={};addEventListener('keydown',e=>{keys[e.code]=1;if(['Space','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.code))e.preventDefault()});
 addEventListener('keyup',e=>keys[e.code]=0);
@@ -26,43 +28,44 @@ let state='title',p,bul,eb,en,fx,score,hi=+localStorage.sbhi||0,t,wave,lives,coo
 for(let i=0;i<40;i++)stars.push([Math.random()*256,Math.random()*240,1+Math.random()*1.5|0]);
 function go(){if(state!=='play'){reset();state='play';try{music.currentTime=0;music.play()}catch(e){}}}
 addEventListener('keydown',e=>{if(e.code==='Enter')go()});
-function reset(){p={x:124,y:216,inv:0};bul=[];eb=[];en=[];fx=[];score=0;t=0;wave=0;lives=3;cool=0;spawn()}
-function spawn(){wave++;for(let r=0;r<3;r++)for(let c=0;c<8;c++)en.push({x:40+c*20,y:24+r*16,t:r?1:2,hp:1})
+function reset(){p={x:128,y:216,inv:0};bul=[];eb=[];en=[];fx=[];score=0;t=0;wave=0;lives=3;cool=0;spawn()}
+function spawn(){wave++;en=[];for(let r=0;r<3;r++)for(let c=0;c<8;c++)en.push({x:34+c*26,y:34+r*20,t:r?1:2});
   en.dir=1;en.spd=.3+wave*.08}
 function update(){
   t++;
   const L=keys.ArrowLeft||keys.KeyA,R=keys.ArrowRight||keys.KeyD;
-  if(L)p.x-=2;if(R)p.x+=2;if(touchX!==null)p.x+=Math.max(-2,Math.min(2,touchX-4-p.x));
-  p.x=Math.max(0,Math.min(248,p.x));
+  if(L)p.x-=2;if(R)p.x+=2;if(touchX!==null)p.x+=Math.max(-2,Math.min(2,touchX-p.x));
+  p.x=Math.max(8,Math.min(248,p.x));
   if(cool>0)cool--;
-  if((keys.Space||keys.KeyZ||keys.ArrowUp||touchShoot)&&cool<=0&&bul.length<3){bul.push({x:p.x,y:p.y-6});cool=10;play('shoot')}
+  if((keys.Space||keys.KeyZ||keys.ArrowUp||touchShoot)&&cool<=0&&bul.length<3){bul.push({x:p.x,y:p.y-10});cool=10;play('shoot')}
   bul.forEach(b=>b.y-=4);bul=bul.filter(b=>b.y>-8);
   let edge=false;
-  en.forEach(e=>{e.x+=en.dir*en.spd;if(e.x<4||e.x>244)edge=true});
+  en.forEach(e=>{e.x+=en.dir*en.spd;if(e.x<10||e.x>246)edge=true});
   if(edge){en.dir*=-1;en.forEach(e=>e.y+=6)}
-  if(t%Math.max(20,60-wave*5)===0&&en.length){const e=en[Math.random()*en.length|0];eb.push({x:e.x,y:e.y+6})}
-  eb.forEach(b=>b.y+=1.6+wave*.1);eb=eb.filter(b=>b.y<244);
-  bul.forEach(b=>en.forEach(e=>{if(!e.dead&&Math.abs(b.x-e.x)<8&&Math.abs(b.y-e.y)<8){e.dead=1;b.y=-99;score+=e.t===2?30:10;fx.push({x:e.x,y:e.y,t:12});play('hit')}}));
+  if(t%Math.max(20,60-wave*5)===0&&en.length){const e=en[Math.random()*en.length|0];eb.push({x:e.x,y:e.y+8})}
+  eb.forEach(b=>b.y+=1.6+wave*.1);eb=eb.filter(b=>b.y<248);
+  bul.forEach(b=>en.forEach(e=>{if(!e.dead&&Math.abs(b.x-e.x)<10&&Math.abs(b.y-e.y)<10){e.dead=1;b.y=-99;score+=e.t===2?30:10;fx.push({x:e.x,y:e.y,t:16});play('hit')}}));
   en=Object.assign(en.filter(e=>!e.dead),{dir:en.dir,spd:en.spd});
   fx.forEach(f=>f.t--);fx=fx.filter(f=>f.t>0);
   if(p.inv>0)p.inv--;
-  else eb.forEach(b=>{if(Math.abs(b.x-p.x)<6&&Math.abs(b.y-p.y)<6)hurt(b)});
-  if(en.some(e=>e.y>208))lives=0,die();
-  if(!en.length)spawn();
+  else eb.forEach(b=>{if(Math.abs(b.x-p.x)<8&&Math.abs(b.y-p.y)<8)hurt(b)});
+  if(en.some(e=>e.y>200)){lives=0;die()}
+  else if(!en.length){play('clear');spawn()}
 }
-function hurt(b){b.y=999;lives--;p.inv=90;fx.push({x:p.x,y:p.y,t:20});play('boom');if(lives<=0)die()}
+function hurt(b){b.y=999;lives--;p.inv=90;fx.push({x:p.x,y:p.y,t:16});play('hurt');if(lives<=0)die()}
 function die(){lives=0;state='over';music.pause();play('over');if(score>hi){hi=score;localStorage.sbhi=hi}}
 function draw(){
   g.fillStyle='#000';g.fillRect(0,0,256,240);
-  stars.forEach(s=>{s[1]=(s[1]+s[2]*.3)%240;spr(S.star,s[0],s[1])});
-  if(state==='title'){txt('STAR BLASTER',80,90,'#fcd838');txt('PRESS ENTER / TAP',72,130);txt('ARROWS MOVE  SPACE FIRE',48,150,'#0078f8');txt('HI '+hi,104,180);return}
-  en.forEach(e=>spr(e.t===2?S.e2:S.e1,e.x,e.y+(t>>4&1)));
-  bul.forEach(b=>spr(S.bul,b.x,b.y));eb.forEach(b=>spr(S.ebul,b.x,b.y));
-  if(state==='play'&&(p.inv===0||t>>2&1))spr(S.ship,p.x,p.y);
-  fx.forEach(f=>spr(f.t>6?S.b1:S.b2,f.x,f.y));
+  stars.forEach(s=>{s[1]=(s[1]+s[2]*.3)%240;g.fillStyle='#fcfcfc';g.fillRect(s[0]|0,s[1]|0,1,1)});
+  if(state==='title'){spr(IMG.player,t++>>3&3,0,128,60);txt('STAR BLASTER',80,100,'#fcd838');txt('PRESS ENTER / TAP',72,130);txt('ARROWS MOVE  SPACE FIRE',48,150,'#0078f8');txt('HI '+hi,104,180);return}
+  en.forEach(e=>e.t===2?spr(IMG.loomer,t>>4&1,0,e.x,e.y):spr(IMG.beast,t>>4&1,0,e.x,e.y));
+  bul.forEach(b=>spr(IMG.shot,t>>2&1,0,b.x,b.y,Math.PI/2));
+  eb.forEach(b=>spr(IMG.eshot,t>>2&1,0,b.x,b.y,-Math.PI/2));
+  if(state==='play'&&(p.inv===0||t>>2&1))spr(IMG.player,t>>3&3,0,p.x,p.y);
+  fx.forEach(f=>spr(IMG.spark,3-(f.t>>2),0,f.x,f.y));
   txt('SCORE '+String(score).padStart(5,'0'),8,10);txt('HI '+String(hi).padStart(5,'0'),100,10);
-  txt('x'+lives,224,10,'#f83800');spr(S.ship,214,3);
+  spr(IMG.player,0,0,214,6);txt('x'+lives,226,10,'#f83800');
   if(state==='over'){txt('GAME OVER',96,110,'#f83800');txt('PRESS ENTER / TAP',72,130)}
 }
-(function loop(){if(state==='play')update();draw();requestAnimationFrame(loop)})();
+(function loop(){if(state==='play')update();else if(state==='title')t++;draw();requestAnimationFrame(loop)})();
 </script></body></html>
