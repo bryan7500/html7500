@@ -1,6 +1,6 @@
 # Asset credits (from Google Drive "Game building factory")
 
-## Sprites — `assets/sprites/`
+## Sprites — `assets/sprites/` (player, beast, loomer, gello, boss_morph, shots, coin)
 Source: `8 bit nes game paks/space-base-platform-shooter-8-bit-art-graphics-pack.zip`
 Artwork by sitebender (@DrinkingNails), license CC0 (see LICENSE_space-base-pack_CC0.txt). www.drinkingnails.com
 
